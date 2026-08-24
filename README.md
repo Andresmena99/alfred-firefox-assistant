@@ -136,6 +136,9 @@ from your own bookmarks, but the capability is there and no grep of
 
 ## Build from source
 
+For the full maintainer guide — dev loop, adding a keyword, release process, known
+traps — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
 ```sh
 go build            # -> ./alfred-firefox
 go vet ./...
