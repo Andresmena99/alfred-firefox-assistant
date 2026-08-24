@@ -156,7 +156,7 @@ Alfred consumes (needs Firefox running with the extension connected):
 
 ```sh
 ./devrun.sh tab-groups
-./devrun.sh -query harmony tab-groups
+./devrun.sh -query docs tab-groups
 ./devrun.sh tab-groups | jq '.items[] | {title, subtitle, arg}'
 ```
 
