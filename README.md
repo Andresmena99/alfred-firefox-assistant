@@ -222,7 +222,7 @@ The Alfred workflow itself has no auto-updater — download a newer
 
 ## Licence and credits
 
-Released under the [MIT licence](LICENCE.txt), the same as the original.
+Released under the [MIT licence](LICENSE), the same as the original. Upstream's original notice is preserved verbatim in [LICENCE.txt](LICENCE.txt).
 
 Based on [`deanishe/alfred-firefox`](https://github.com/deanishe/alfred-firefox)
 by Dean Jackson. Built with [AwGo](https://github.com/deanishe/awgo),
