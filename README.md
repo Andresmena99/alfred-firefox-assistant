@@ -226,7 +226,7 @@ Released under the [MIT licence](LICENCE.txt), the same as the original.
 
 Based on [`deanishe/alfred-firefox`](https://github.com/deanishe/alfred-firefox)
 by Dean Jackson. Built with [AwGo](https://github.com/deanishe/awgo),
-[go.deanishe.net/fuzzy](https://github.com/deanishe/fuzzy) and
+[go.deanishe.net/fuzzy](https://github.com/deanishe/go-fuzzy) and
 [peterbourgon/ff](https://github.com/peterbourgon/ff). Icons based on
 [Font Awesome](https://fontawesome.com/).
 
