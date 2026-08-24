@@ -3,42 +3,49 @@
     "browser_style": true,
     "default_title": "Alfred",
     "default_popup": "popup.html",
-
     "default_icon": {
       "32": "icons/bowler.svg"
     }
   },
-
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
-      "id": "alfredfirefox@deanishe.net",
-      "strict_min_version": "74.0"
+      "id": "alfred-firefox@amenagod",
+      "strict_min_version": "139.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      },
+      "update_url": "https://raw.githubusercontent.com/Andresmena99/alfred-firefox-assistant/main/updates.json"
+    },
+    "gecko_android": {
+      "strict_min_version": "139.0"
     }
   },
-
   "permissions": [
     "<all_urls>",
     "bookmarks",
     "downloads",
     "history",
+    "sessions",
+    "tabGroups",
     "tabs",
     "nativeMessaging"
   ],
-
   "background": {
-    "scripts": ["alfred.js"],
+    "scripts": [
+      "alfred.js"
+    ],
     "persistent": true
   },
-
   "icons": {
     "32": "icons/bowler-black.svg",
     "48": "icons/bowler-black.svg",
     "96": "icons/bowler-black.svg",
     "128": "icons/bowler-black.svg"
   },
-
   "manifest_version": 2,
   "name": "Alfred Integration",
-  "version": "1.2.0",
+  "version": "1.4.1",
   "description": "Integrates Firefox with Alfred."
 }

@@ -1,0 +1,12 @@
+{
+  "addons": {
+    "alfred-firefox@amenagod": {
+      "updates": [
+        {
+          "version": "1.4.1",
+          "update_link": "https://github.com/Andresmena99/alfred-firefox-assistant/releases/download/ext-v1.4.1/alfred-firefox-assistant-signed-1.4.1.xpi"
+        }
+      ]
+    }
+  }
+}

@@ -1,4 +1,5 @@
 // Copyright (c) 2020 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
 package main
@@ -169,8 +170,12 @@ func runServer(_ []string) error {
 		}
 	*/
 
-	<-quit
-	log.Print("shutting down ...")
+	select {
+	case <-quit:
+		log.Print("shutting down ...")
+	case <-f.Closed():
+		log.Print("browser disconnected (STDIN closed), shutting down ...")
+	}
 	f.stop()
 	srv.stop()
 	return nil

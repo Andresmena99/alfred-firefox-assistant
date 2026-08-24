@@ -1,0 +1,58 @@
+Alfred Firefox Assistant
+========================
+
+This product is a modified version of "Firefox Assistant for Alfred"
+(alfred-firefox), originally created by Dean Jackson.
+
+  Original work:  https://github.com/deanishe/alfred-firefox
+  Original author: Dean Jackson <deanishe@deanishe.net>
+  Licence:        MIT (see LICENCE.txt)
+
+Modifications
+-------------
+
+Copyright (c) 2024-2026 Andres Mena Godino
+
+The following changes were made to the original work. Files derived from the
+original carry both the original copyright notice and a "Modifications
+Copyright" line.
+
+  * Rewrote the matching engine: searches tab titles *and* URLs, splits the
+    query into terms that may match in any order (logical AND), matches each
+    term against individual tokens, splits CamelCase, and adds a scoring bonus
+    for title matches.
+  * Unified the `tab` keyword so that matching history and recently-closed
+    tabs are folded into the open-tab results and de-duplicated by URL.
+  * Added most-recently-used ordering and recency tie-breaking throughout, and
+    suppressed Alfred result UIDs so the workflow's own ordering is preserved.
+  * Added relative "last opened" timestamps to tab, history and closed-tab
+    results.
+  * Added Firefox tab-group support (Firefox 139+): group name and colour on
+    tab results, plus a new `tg` keyword that browses and searches tab groups
+    and switches to one. New files: tabgroups.go, tabgroups_test.go.
+  * Added extension commands "all-tab-groups" and "activate-tab-group", with a
+    fallback that reconstructs the group list from per-tab fields so the
+    feature degrades gracefully against older builds of the extension.
+  * Added tab and URL actions: Close Tab, Close Duplicate Tabs, Mute/Unmute
+    Tab, Move Tab to New Window, Copy Link as Markdown, Copy Title.
+  * Added relevance ranking for bookmark, history and download results, and
+    removed the three-character minimum from the history and bookmarklet
+    keywords.
+  * Fixed the native-messaging server so it exits cleanly when the browser
+    quits instead of leaving an orphaned process, and so it removes a stale
+    socket on startup.
+  * Disabled the auto-updater and removed the "install the public add-on"
+    menu entry, so this build is never silently replaced by the original.
+  * Added unit tests for the matching engine and the tab-group feature.
+
+Third-party dependencies
+------------------------
+
+  github.com/deanishe/awgo            MIT
+  go.deanishe.net/fuzzy               MIT
+  github.com/peterbourgon/ff          Apache-2.0
+  github.com/mitchellh/go-wordwrap    MIT
+  github.com/magefile/mage            Apache-2.0
+
+Icons are based on Font Awesome (https://fontawesome.com/), licensed under
+CC BY 4.0.

@@ -1,4 +1,5 @@
 // Copyright (c) 2020 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
 package main
@@ -8,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -35,6 +37,10 @@ type urlAction interface {
 func init() {
 	for _, a := range []tabAction{
 		tAction{name: "Activate Tab", action: "activate", icon: iconTab},
+		tAction{name: "Close Tab", action: "close", icon: iconTab},
+		tAction{name: "Close Duplicate Tabs", action: "close-dupes", icon: iconTab},
+		tAction{name: "Mute / Unmute Tab", action: "mute", icon: iconTab},
+		tAction{name: "Move Tab to New Window", action: "move-new-window", icon: iconTab},
 		tAction{name: "Close Tabs to Left", action: "close-left", icon: iconTab},
 		tAction{name: "Close Tabs to Right", action: "close-right", icon: iconTab},
 		tAction{name: "Close Other Tabs", action: "close-other", icon: iconTab},
@@ -42,8 +48,13 @@ func init() {
 		tabActions[a.Name()] = a
 	}
 
-	a := openIncognito{}
-	urlActions[a.Name()] = a
+	for _, a := range []urlAction{
+		openIncognito{},
+		copyAction{name: "Copy Link as Markdown", icon: iconURL, format: "markdown"},
+		copyAction{name: "Copy Title", icon: iconURL, format: "title"},
+	} {
+		urlActions[a.Name()] = a
+	}
 }
 
 func loadURLActions() error {
@@ -115,9 +126,42 @@ func (a tAction) Run(tabID int) error {
 		return c.CloseTabsRight(tabID)
 	case "close-other":
 		return c.CloseTabsOther(tabID)
+	case "close":
+		return c.CloseTab(tabID)
+	case "mute":
+		return c.MuteTab(tabID)
+	case "move-new-window":
+		return c.MoveTabToNewWindow(tabID)
+	case "close-dupes":
+		return closeDuplicateTabs(c, tabID)
 	default:
 		return fmt.Errorf("unknown action %q", action)
 	}
+}
+
+// closeDuplicateTabs closes all but the first tab for each distinct URL. The
+// tab the user acted on (keepTabID) is never closed.
+func closeDuplicateTabs(c *rpcClient, keepTabID int) error {
+	tabs, err := c.Tabs()
+	if err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	var firstErr error
+	for _, t := range tabs {
+		key := normalizeURL(t.URL)
+		if !seen[key] {
+			seen[key] = true
+			continue
+		}
+		if t.ID == keepTabID {
+			continue
+		}
+		if err := c.CloseTab(t.ID); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }
 
 type uAction struct {
@@ -155,8 +199,44 @@ func (a openIncognito) Run(URL string) error {
 	return nil
 }
 
+// copyAction copies the URL (and, for some formats, the page title from the
+// TITLE workflow variable) to the clipboard.
+type copyAction struct {
+	name   string
+	icon   *aw.Icon
+	format string // "markdown" or "title"
+}
+
+func (a copyAction) Name() string   { return a.name }
+func (a copyAction) Icon() *aw.Icon { return a.icon }
+func (a copyAction) Run(URL string) error {
+	title := os.Getenv("TITLE")
+	var text string
+	switch a.format {
+	case "markdown":
+		if title == "" {
+			title = URL
+		}
+		text = fmt.Sprintf("[%s](%s)", title, URL)
+	case "title":
+		text = title
+	default:
+		text = URL
+	}
+	log.Printf("copying to clipboard: %q", text)
+	return pbcopy(text)
+}
+
+// pbcopy writes s to the macOS clipboard.
+func pbcopy(s string) error {
+	cmd := exec.Command("/usr/bin/pbcopy")
+	cmd.Stdin = strings.NewReader(s)
+	return cmd.Run()
+}
+
 var (
 	_ tabAction = (*tAction)(nil)
 	_ urlAction = (*uAction)(nil)
 	_ urlAction = openIncognito{}
+	_ urlAction = copyAction{}
 )

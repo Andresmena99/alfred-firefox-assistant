@@ -1,2 +1,21 @@
-/dist
+# Build output
 /build
+/dist
+/alfred-firefox
+/alfred-firefox-amd64
+/alfred-firefox-universal
+
+# Mozilla web-ext state and artifacts — not source
+extension/.amo-upload-uuid
+extension/web-ext-artifacts/
+web-ext-artifacts/
+
+# macOS
+.DS_Store
+**/.DS_Store
+_CodeSignature/
+/alfred-firefox-assistant
+
+# Local backups
+*.bak-*
+*.superseded-*

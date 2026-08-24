@@ -1,4 +1,5 @@
 // Copyright (c) 2020 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
 package main
@@ -35,6 +36,15 @@ func newRPCService(addr string, client *firefox) (*rpcServer, error) {
 
 	if err = s.server.RegisterName("Firefox", s); err != nil {
 		return nil, err
+	}
+
+	// Remove any stale socket file left behind by a previous server that did
+	// not shut down cleanly (e.g. the browser was force-quit). writePID() has
+	// already terminated and waited for any prior server *process*, so the
+	// socket path is safe to reclaim here. Without this, net.Listen fails with
+	// "bind: address already in use" and the server crashes on startup.
+	if err = os.Remove(s.sock); err != nil && !os.IsNotExist(err) {
+		log.Printf("[WARN] could not remove stale socket %q: %v", s.sock, err)
 	}
 
 	if s.listener, err = net.Listen("unix", s.sock); err != nil {
@@ -89,6 +99,36 @@ func (s *rpcServer) Tabs(_ string, tabs *[]Tab) error {
 		return errors.New(r.Error)
 	}
 	*tabs = r.Tabs
+	return nil
+}
+
+// TabGroups returns all Firefox tab groups. Requires extension v1.4.0+; older
+// extensions reject the command, and the caller falls back to deriving the
+// group list from Tabs() (see deriveTabGroups).
+func (s *rpcServer) TabGroups(_ string, groups *[]TabGroup) error {
+	defer util.Timed(time.Now(), "get tab groups")
+	var r responseTabGroups
+	if err := s.ff.call("all-tab-groups", nil, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
+	*groups = r.Groups
+	return nil
+}
+
+// ActivateTabGroup switches to the specified tab group, expanding it if it is
+// collapsed. Requires extension v1.4.0+.
+func (s *rpcServer) ActivateTabGroup(groupID int, _ *struct{}) error {
+	defer util.Timed(time.Now(), "activate tab group")
+	var r responseNone
+	if err := s.ff.call("activate-tab-group", groupID, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
 	return nil
 }
 
@@ -245,6 +285,72 @@ func (s *rpcServer) OpenIncognito(URL string, _ *struct{}) error {
 	return nil
 }
 
+// CloseTab closes the specified tab.
+func (s *rpcServer) CloseTab(tabID int, _ *struct{}) error {
+	defer util.Timed(time.Now(), "close tab")
+	var r responseNone
+	if err := s.ff.call("close-tab", tabID, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
+	return nil
+}
+
+// MuteTab toggles the muted state of the specified tab.
+func (s *rpcServer) MuteTab(tabID int, _ *struct{}) error {
+	defer util.Timed(time.Now(), "mute tab")
+	var r responseNone
+	if err := s.ff.call("mute-tab", tabID, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
+	return nil
+}
+
+// MoveTabToNewWindow moves the specified tab into a new window.
+func (s *rpcServer) MoveTabToNewWindow(tabID int, _ *struct{}) error {
+	defer util.Timed(time.Now(), "move tab to new window")
+	var r responseNone
+	if err := s.ff.call("move-tab-new-window", tabID, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
+	return nil
+}
+
+// RecentlyClosed returns recently-closed tabs (most recent first).
+func (s *rpcServer) RecentlyClosed(_ string, tabs *[]ClosedTab) error {
+	defer util.Timed(time.Now(), "recently closed")
+	var r responseClosedTabs
+	if err := s.ff.call("recently-closed", nil, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
+	*tabs = r.Tabs
+	return nil
+}
+
+// RestoreSession restores a closed tab/window by session ID (empty = most recent).
+func (s *rpcServer) RestoreSession(sessionID string, _ *struct{}) error {
+	defer util.Timed(time.Now(), "restore session")
+	var r responseNone
+	if err := s.ff.call("restore-session", sessionID, &r); err != nil {
+		return err
+	}
+	if r.Error != "" {
+		return errors.New(r.Error)
+	}
+	return nil
+}
+
 // RunJSArg is the arguments required for RunJS call. TabID may be 0, in which
 // case the JavaScript is executed in the active tab.
 type RunJSArg struct {
@@ -308,6 +414,16 @@ type responseString struct {
 type responseTabs struct {
 	Tabs  []Tab  `json:"payload"`
 	Error string `json:"error"`
+}
+
+type responseClosedTabs struct {
+	Tabs  []ClosedTab `json:"payload"`
+	Error string      `json:"error"`
+}
+
+type responseTabGroups struct {
+	Groups []TabGroup `json:"payload"`
+	Error  string     `json:"error"`
 }
 
 type responseTab struct {

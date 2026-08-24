@@ -1,4 +1,5 @@
 // Copyright (c) 2019 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
 // Command firefox is an Alfred workflow to interact with Firefox.
@@ -21,7 +22,6 @@ import (
 	"time"
 
 	aw "github.com/deanishe/awgo"
-	"github.com/deanishe/awgo/update"
 	"github.com/deanishe/awgo/util"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/peterbourgon/ff"
@@ -37,12 +37,11 @@ const (
 	helpURL  = "https://github.com/deanishe/alfred-firefox/issues"
 	docsURL  = "https://github.com/deanishe/alfred-firefox/blob/master/doc/index.md"
 	addonURL = "https://addons.mozilla.org/en-US/firefox/addon/alfred-launcher-integration/"
-	repo     = "deanishe/alfred-firefox"
 )
 
 // native application manifest
 var (
-	extensionID   = "alfredfirefox@deanishe.net"
+	extensionID   = "alfred-firefox@amenagod"
 	extensionName = "net.deanishe.alfred.firefox"
 	manifestPath  = os.ExpandEnv("${HOME}/Library/Application Support/Mozilla/" +
 		"NativeMessagingHosts/" + extensionName + ".json")
@@ -52,7 +51,6 @@ var (
 var (
 	wf = aw.New(
 		aw.HelpURL(helpURL),
-		update.GitHub(repo),
 		aw.AddMagic(registerMagic{}),
 	)
 
@@ -117,6 +115,8 @@ func init() {
 		statusCmd,
 		tabCmd,
 		tabsCmd,
+		tabGroupsCmd,
+		tabGroupCmd,
 		urlCmd,
 		updateCmd,
 	}

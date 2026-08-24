@@ -1,4 +1,5 @@
 // Copyright (c) 2020 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
 package main
@@ -10,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -67,6 +69,8 @@ type firefox struct {
 	commands  chan command
 	responses chan response
 	done      chan struct{}
+	closed    chan struct{} // closed when the extension disconnects (STDIN EOF)
+	closeOnce sync.Once
 	handlers  map[string]chan response
 }
 
@@ -75,13 +79,27 @@ func newFirefox() *firefox {
 		commands:  make(chan command, 1),
 		responses: make(chan response, 1),
 		done:      make(chan struct{}),
+		closed:    make(chan struct{}),
 		handlers:  map[string]chan response{},
 	}
 }
 
+// Closed returns a channel that is closed when the connection to the browser
+// extension is lost, i.e. its STDIN reaches EOF because the browser quit (or
+// was force-quit). The server uses this to shut down promptly instead of
+// lingering as an orphan that holds the RPC socket.
+func (f *firefox) Closed() <-chan struct{} { return f.closed }
+
+// markClosed signals (exactly once) that the extension has disconnected.
+func (f *firefox) markClosed() { f.closeOnce.Do(func() { close(f.closed) }) }
+
 // run the read/write loop to send & receive messages from the extension.
 func (f *firefox) run() {
 	go func() {
+		// However the reader loop ends (EOF when the browser quits, or a read
+		// error), tell the server the extension has disconnected so it can shut
+		// down and release the RPC socket.
+		defer f.markClosed()
 		b := make([]byte, 4)
 		for {
 			// read payload size

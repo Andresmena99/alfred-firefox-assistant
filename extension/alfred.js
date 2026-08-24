@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2019-2021 Dean Jackson <deanishe@deanishe.net>
+ * Modifications Copyright (c) 2026 Andres Mena Godino
+ *
+ * MIT Licence applies http://opensource.org/licenses/MIT
+ *
+ * This file is a modified version of the original from
+ * https://github.com/deanishe/alfred-firefox
+ */
 /* global browser */
 
 /**
@@ -26,6 +35,13 @@ const Tab = tab => {
   obj.url        = new URL(tab.url || '');
   // obj.favicon = tab.favIconUrl  || '';
   obj.active     = tab.active      || false;
+  obj.pinned     = tab.pinned      || false;
+  obj.audible    = tab.audible     || false;
+  obj.muted      = (tab.mutedInfo && tab.mutedInfo.muted) || false;
+  obj.lastAccessed = tab.lastAccessed || 0;
+  obj.groupId    = (typeof tab.groupId === 'number') ? tab.groupId : -1;
+  obj.groupTitle = '';
+  obj.groupColor = '';
 
   obj.toString = function() {
     return `#${this.id} (${this.windowId}x${this.index}) "${this.title}" - ${this.url}`;
@@ -69,6 +85,7 @@ const HistoryEntry = hi => {
   obj.id    = hi.id    || 0;
   obj.url   = hi.url   || '';
   obj.title = hi.title || hi.url;
+  obj.lastVisitTime = hi.lastVisitTime || 0;
 
   obj.toString = function() {
     return `#${this.id} "${this.title}" - ${this.url}`;
@@ -205,6 +222,12 @@ const Background = function() {
         case 'all-tabs':
           p = self.allTabs();
           break;
+        case 'all-tab-groups':
+          p = self.allTabGroups();
+          break;
+        case 'activate-tab-group':
+          p = self.activateTabGroup(msg.params);
+          break;
         // DEPRECATED - replaced by self.tab(); unused by newer
         // versions 0.2.0+ of workflow
         // Remove from future versions
@@ -246,6 +269,21 @@ const Background = function() {
           break;
         case 'open-incognito':
           p = self.openIncognito(msg.params);
+          break;
+        case 'close-tab':
+          p = self.closeTab(msg.params);
+          break;
+        case 'recently-closed':
+          p = self.recentlyClosed();
+          break;
+        case 'restore-session':
+          p = self.restoreSession(msg.params);
+          break;
+        case 'mute-tab':
+          p = self.muteTab(msg.params);
+          break;
+        case 'move-tab-new-window':
+          p = self.moveTabNewWindow(msg.params);
           break;
         default:
           console.error(`unknown command: ${msg.command}`);
@@ -307,10 +345,133 @@ const Background = function() {
    * by most recently used.
    */
   self.allTabs = () => {
-    return browser.tabs.query({}).then(tabs => tabs
-      .sort((a, b) => (b?.lastAccessed ?? 0) - (a?.lastAccessed ?? 0))
-      .map(t => Tab(t))
-    );
+    // Look up tab groups (Firefox 139+) so each tab can carry its group's
+    // title and colour. Guarded + best-effort: if the API is missing or fails,
+    // tabs are returned without group info.
+    let groupsById = {};
+    let loadGroups = Promise.resolve();
+    if (browser.tabGroups && browser.tabGroups.query) {
+      loadGroups = browser.tabGroups
+        .query({})
+        .then(groups => {
+          groups.forEach(g => {
+            groupsById[g.id] = g;
+          });
+        })
+        .catch(err => {
+          console.debug(`tabGroups.query failed: ${err}`);
+        });
+    }
+    return loadGroups
+      .then(() => browser.tabs.query({}))
+      .then(tabs =>
+        tabs
+          .sort((a, b) => (b?.lastAccessed ?? 0) - (a?.lastAccessed ?? 0))
+          .map(t => {
+            let obj = Tab(t);
+            let g = groupsById[obj.groupId];
+            if (g) {
+              obj.groupTitle = g.title || '';
+              obj.groupColor = g.color || '';
+            }
+            return obj;
+          })
+      );
+  };
+
+  /**
+   * Handle "all-tab-groups" command.
+   *
+   * Returns every tab group (Firefox 139+) enriched with aggregates over its
+   * member tabs — tab count, the most-recently-accessed member (used both for
+   * ordering groups by recency and as the tab to activate), and the group's
+   * position in the tab strip (minimum tab index). Guarded + best-effort: if
+   * the tabGroups API is missing the promise rejects, and the native side falls
+   * back to deriving groups from all-tabs.
+   *
+   * @return {Promise} - Resolves to an array of group objects:
+   *   {id, title, color, windowId, collapsed, collapsedKnown,
+   *    tabCount, lastAccessed, minIndex, activeTabId}
+   */
+  self.allTabGroups = () => {
+    if (!(browser.tabGroups && browser.tabGroups.query)) {
+      return Promise.reject(new Error('tabGroups API unavailable'));
+    }
+    return Promise.all([
+      browser.tabGroups.query({}),
+      browser.tabs.query({}),
+    ]).then(([groups, tabs]) => {
+      // Aggregate member tabs per group in a single pass.
+      let agg = {};
+      tabs.forEach(t => {
+        let gid = (typeof t.groupId === 'number') ? t.groupId : -1;
+        if (gid < 0) return;
+        let a = agg[gid];
+        if (!a) {
+          a = agg[gid] = { count: 0, lastAccessed: 0, minIndex: Infinity, activeTabId: 0 };
+        }
+        a.count += 1;
+        let la = t.lastAccessed || 0;
+        if (la >= a.lastAccessed) {
+          a.lastAccessed = la;
+          a.activeTabId = t.id || 0;
+        }
+        let idx = (typeof t.index === 'number') ? t.index : Infinity;
+        if (idx < a.minIndex) a.minIndex = idx;
+      });
+      return groups.map(g => {
+        let a = agg[g.id] || { count: 0, lastAccessed: 0, minIndex: 0, activeTabId: 0 };
+        return {
+          id: g.id,
+          title: g.title || '',
+          color: g.color || '',
+          windowId: (typeof g.windowId === 'number') ? g.windowId : 0,
+          collapsed: g.collapsed || false,
+          collapsedKnown: true,
+          tabCount: a.count,
+          lastAccessed: a.lastAccessed,
+          minIndex: (a.minIndex === Infinity) ? 0 : a.minIndex,
+          activeTabId: a.activeTabId,
+        };
+      });
+    });
+  };
+
+  /**
+   * Handle "activate-tab-group" command.
+   *
+   * Switches to a tab group: focuses the group's window, expands the group if
+   * it is collapsed, and activates the group's most-recently-used tab so the
+   * group becomes the visible, active context. Activating a member tab is what
+   * makes Firefox scroll the group into view and mark it current.
+   *
+   * @param {number} groupId - ID of the group to switch to.
+   */
+  self.activateTabGroup = groupId => {
+    console.debug(`activating tab group #${groupId} ...`);
+    let group = null;
+    return browser.tabGroups
+      .get(groupId)
+      .then(g => {
+        group = g;
+        // Expand the group first so its tabs are visible once activated.
+        if (g && g.collapsed && browser.tabGroups.update) {
+          return browser.tabGroups.update(groupId, { collapsed: false }).catch(err => {
+            console.debug(`tabGroups.update failed: ${err}`);
+          });
+        }
+        return null;
+      })
+      .then(() => browser.tabs.query({ groupId: groupId }))
+      .then(tabs => {
+        if (!tabs || !tabs.length) throw new Error('tab group is empty');
+        // Activate the most-recently-used tab in the group.
+        tabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+        let target = tabs[0];
+        return browser.tabs
+          .update(target.id, { active: true })
+          .then(() => browser.windows.update(target.windowId, { focused: true }));
+      });
   };
 
   /**
@@ -541,6 +702,68 @@ const Background = function() {
   self.openIncognito = url => {
     console.debug(`open-incognito ${url}`);
     return browser.windows.create({ incognito: true, url: url });
+  };
+
+  /**
+   * Handle "close-tab" command.
+   * @param {number} tabId - ID of tab to close.
+   */
+  self.closeTab = tabId => {
+    console.debug(`closing tab #${tabId} ...`);
+    return browser.tabs.remove(tabId);
+  };
+
+  /**
+   * Handle "recently-closed" command.
+   * @return {Promise} - Array of {sessionId,title,url,lastModified}, newest first.
+   */
+  self.recentlyClosed = () => {
+    return browser.sessions.getRecentlyClosed().then(sessions => {
+      let out = [];
+      sessions.forEach(s => {
+        if (s.tab) {
+          out.push({
+            sessionId: s.tab.sessionId || '',
+            title: s.tab.title || s.tab.url || '',
+            url: s.tab.url || '',
+            lastModified: s.lastModified || 0,
+          });
+        }
+      });
+      console.debug(`${out.length} recently-closed tab(s)`);
+      return out;
+    });
+  };
+
+  /**
+   * Handle "restore-session" command.
+   * @param {string} sessionId - Session to restore (empty = most recent).
+   */
+  self.restoreSession = sessionId => {
+    console.debug(`restoring session ${sessionId} ...`);
+    if (sessionId) return browser.sessions.restore(sessionId);
+    return browser.sessions.restore();
+  };
+
+  /**
+   * Handle "mute-tab" command. Toggles the tab's muted state.
+   * @param {number} tabId - ID of tab to (un)mute.
+   */
+  self.muteTab = tabId => {
+    return browser.tabs.get(tabId).then(tab => {
+      let muted = !(tab.mutedInfo && tab.mutedInfo.muted);
+      console.debug(`setting muted=${muted} on tab #${tabId} ...`);
+      return browser.tabs.update(tabId, { muted: muted });
+    });
+  };
+
+  /**
+   * Handle "move-tab-new-window" command. Moves the tab into a new window.
+   * @param {number} tabId - ID of tab to move.
+   */
+  self.moveTabNewWindow = tabId => {
+    console.debug(`moving tab #${tabId} to a new window ...`);
+    return browser.windows.create({ tabId: tabId });
   };
 
   /**

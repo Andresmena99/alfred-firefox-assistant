@@ -1,4 +1,5 @@
 // Copyright (c) 2020 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
 package main
@@ -87,6 +88,20 @@ func (c *rpcClient) Tab(tabID int) (Tab, error) {
 	return tab, err
 }
 
+// TabGroups returns all Firefox tab groups. Errors on extensions older than
+// v1.4.0, in which case the caller derives groups from Tabs() instead.
+func (c *rpcClient) TabGroups() ([]TabGroup, error) {
+	var groups []TabGroup
+	err := c.client.Call("Firefox.TabGroups", "", &groups)
+	return groups, err
+}
+
+// ActivateTabGroup switches to the specified tab group, expanding it if
+// collapsed. Errors on extensions older than v1.4.0.
+func (c *rpcClient) ActivateTabGroup(groupID int) error {
+	return c.client.Call("Firefox.ActivateTabGroup", groupID, nil)
+}
+
 /*
 // CurrentTab returns the currently-active tab.
 func (c *rpcClient) CurrentTab() (Tab, error) {
@@ -119,6 +134,33 @@ func (c *rpcClient) CloseTabsOther(tabID int) error {
 // OpenIncognito opens a URL in a new Incognito window.
 func (c *rpcClient) OpenIncognito(URL string) error {
 	return c.client.Call("Firefox.OpenIncognito", URL, nil)
+}
+
+// CloseTab closes the specified tab.
+func (c *rpcClient) CloseTab(tabID int) error {
+	return c.client.Call("Firefox.CloseTab", tabID, nil)
+}
+
+// MuteTab toggles the muted state of the specified tab.
+func (c *rpcClient) MuteTab(tabID int) error {
+	return c.client.Call("Firefox.MuteTab", tabID, nil)
+}
+
+// MoveTabToNewWindow moves the specified tab into a new window.
+func (c *rpcClient) MoveTabToNewWindow(tabID int) error {
+	return c.client.Call("Firefox.MoveTabToNewWindow", tabID, nil)
+}
+
+// RecentlyClosed returns recently-closed tabs (most recent first).
+func (c *rpcClient) RecentlyClosed() ([]ClosedTab, error) {
+	var tabs []ClosedTab
+	err := c.client.Call("Firefox.RecentlyClosed", "", &tabs)
+	return tabs, err
+}
+
+// RestoreSession restores a closed tab/window by session ID.
+func (c *rpcClient) RestoreSession(sessionID string) error {
+	return c.client.Call("Firefox.RestoreSession", sessionID, nil)
 }
 
 // RunJS executes JavaScript in the specified tab. If tabID is 0, the

@@ -1,6 +1,8 @@
 // Copyright (c) 2019 Dean Jackson <deanishe@deanishe.net>
+// Modifications Copyright (c) 2026 Andres Mena Godino
 // MIT Licence applies http://opensource.org/licenses/MIT
 
+//go:build mage
 // +build mage
 
 package main

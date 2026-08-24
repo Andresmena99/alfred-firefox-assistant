@@ -329,11 +329,26 @@
 				<true/>
 			</dict>
 		</array>
+		<key>F7BEC63A-1231-4DC1-AE81-577B5611D432</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>56FBB613-EE25-4DE4-930D-C1F51B9235D8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 	</dict>
 	<key>createdby</key>
 	<string>Dean Jackson &lt;deanishe@deanishe.net&gt;</string>
 	<key>description</key>
-	<string>Control Firefox from Alfred</string>
+	<string>Control Firefox from Alfred
+
+Search and switch Firefox tab groups with the tg keyword.</string>
 	<key>disabled</key>
 	<false/>
 	<key>name</key>
@@ -1267,21 +1282,75 @@ echo "wrote tab info to $1" &gt;&amp;2</string>
 			<key>version</key>
 			<integer>2</integer>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<true/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>tg</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading tab groups…</string>
+				<key>script</key>
+				<string>./alfred-firefox -query "$1" tab-groups</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Search Firefox Tab Groups</string>
+				<key>title</key>
+				<string>Firefox Tab Groups</string>
+				<key>type</key>
+				<integer>5</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>F7BEC63A-1231-4DC1-AE81-577B5611D432</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
 	</array>
 	<key>readme</key>
-	<string>Firefox Assistant
-=================
+	<string>Firefox Assistant (enhanced fork)
+=================================
 
-Search your Firefox bookmarks, history and tabs.
+Search and switch Firefox tabs, TAB GROUPS, history, bookmarks, downloads and
+recently-closed tabs.
 
-This workflow requires the corresponding Firefox extension to be installed:
+Keywords: tab, tg (tab groups), hist, bm, bml, dl, ffass
 
-https://addons.mozilla.org/en-US/firefox/addon/alfred-launcher-integration/
+REQUIRES the matching Firefox extension, which you install from the signed .xpi
+file supplied by the maintainer (amenagod), then restart Firefox.
 
+Do NOT install the public add-on from addons.mozilla.org - that is the UPSTREAM
+extension and it does not work with this build.
 
-Please see the online docs for more information:
+Needs Firefox 139 or later for tab-group support.
 
-https://github.com/deanishe/alfred-firefox/blob/master/doc/index.md</string>
+Run ffass in Alfred to check the connection status.
+</string>
 	<key>uidata</key>
 	<dict>
 		<key>01563DAF-B949-4BE5-A856-1C32ABFA03E9</key>
@@ -1516,6 +1585,15 @@ Can either write tab info to a file or pass it to another External Trigger.</str
 			<key>ypos</key>
 			<integer>1230</integer>
 		</dict>
+		<key>F7BEC63A-1231-4DC1-AE81-577B5611D432</key>
+		<dict>
+			<key>note</key>
+			<string>Search tab groups</string>
+			<key>xpos</key>
+			<integer>210</integer>
+			<key>ypos</key>
+			<integer>480</integer>
+		</dict>
 	</dict>
 	<key>variables</key>
 	<dict>
@@ -1534,7 +1612,7 @@ Can either write tab info to a file or pass it to another External Trigger.</str
 		<string>TAB_GODOC</string>
 	</array>
 	<key>version</key>
-	<string>0.2.2</string>
+	<string>0.2.3</string>
 	<key>webaddress</key>
 	<string>https://github.com/deanishe/alfred-firefox</string>
 </dict>
